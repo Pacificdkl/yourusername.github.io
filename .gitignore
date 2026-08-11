@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+.next/
+dist/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment — never commit secrets or provider keys
+.env
+.env.local
+.env.*.local
+
+# Test / coverage
+coverage/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
