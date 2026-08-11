@@ -12,9 +12,11 @@ Not a native app. Not a content site. Not a recommender.
 
 ## Status
 
-**Phase 1 (auth + verification gate) is built and green.** Earlier phases of
-pure logic are also in place. Implemented:
+**Phases 1–2 are built and green.** Implemented:
 
+- `src/pairing/` — invite codes (6 chars / 15 min / single use, CSPRNG), dual
+  confirmation, one active pairing per user, and unilateral unpair with
+  same-transaction cascade delete of shared session history (invariant #7).
 - `src/auth/` — passkey auth + magic-link fallback, signed sessions, and the
   two-layer verification gate (`withVerified` per-route + edge `middleware.ts`)
   (invariant #1).
@@ -28,10 +30,10 @@ pure logic are also in place. Implemented:
 - `src/boundaries/` — pure pool computation (invariants #4, #5).
 - `tools/eslint-rules/no-math-random.js` — the custom lint rule (invariant #6).
 
-Invariant tests `01`–`06` and `08` are real and passing; `07` and `09` remain
-`it.todo` until their phases (pairing, notifications). Pairing, content,
-session UI, and privacy controls are still scaffolded (`README`s / stubs), built
-out phase by phase per CLAUDE.md §7. **Phase 2 has not been started.**
+Invariant tests `01`–`08` are real and passing; only `09` remains `it.todo`
+(notifications, a later phase). Content, session UI, and privacy controls are
+still scaffolded (`README`s / stubs), built out phase by phase per CLAUDE.md §7.
+**Phase 3 has not been started.**
 
 ## Getting started
 

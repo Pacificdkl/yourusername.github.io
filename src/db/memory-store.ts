@@ -9,9 +9,15 @@
 
 import { randomInt } from '@/spin/rng';
 import type {
+  InviteCode,
   MagicToken,
+  Pairing,
+  PairingStore,
   PendingChallenge,
+  SessionDrawRow,
+  SessionRow,
   StoredCredential,
+  UnpairResult,
   User,
   UserStore,
   VerificationRecord,
@@ -26,12 +32,16 @@ function newId(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export class MemoryUserStore implements UserStore {
+export class MemoryUserStore implements UserStore, PairingStore {
   private users = new Map<string, User>();
   private credentials = new Map<string, { userId: string; cred: StoredCredential }>();
   private challenges = new Map<string, PendingChallenge>();
   private magicTokens = new Map<string, MagicToken>();
   private emailIndex = new Map<string, string>();
+  private invites = new Map<string, InviteCode>();
+  private pairings = new Map<string, Pairing>();
+  private sessions = new Map<string, SessionRow>();
+  private draws: SessionDrawRow[] = [];
 
   async createUser(): Promise<User> {
     const user: User = {
@@ -115,6 +125,86 @@ export class MemoryUserStore implements UserStore {
     this.emailIndex.set(emailHash, userId);
   }
 
+  // --- PairingStore ---
+
+  async createInvite(invite: InviteCode): Promise<void> {
+    this.invites.set(invite.code, { ...invite });
+  }
+
+  async getInvite(code: string): Promise<InviteCode | null> {
+    const i = this.invites.get(code);
+    return i ? { ...i } : null;
+  }
+
+  async consumeInvite(code: string, now: Date): Promise<InviteCode | null> {
+    const i = this.invites.get(code);
+    if (!i) return null;
+    if (i.consumedAt || i.expiresAt.getTime() < now.getTime()) return null;
+    i.consumedAt = now; // single-use, atomic in this single-threaded store
+    return { ...i };
+  }
+
+  async createPairing(pairing: Pairing): Promise<void> {
+    this.pairings.set(pairing.id, { ...pairing });
+  }
+
+  async getPairing(id: string): Promise<Pairing | null> {
+    const p = this.pairings.get(id);
+    return p ? { ...p } : null;
+  }
+
+  async getPairingForUser(userId: string): Promise<Pairing | null> {
+    for (const p of this.pairings.values()) {
+      if (p.status !== 'ended' && (p.userA === userId || p.userB === userId)) {
+        return { ...p };
+      }
+    }
+    return null;
+  }
+
+  async updatePairing(pairing: Pairing): Promise<void> {
+    this.pairings.set(pairing.id, { ...pairing });
+  }
+
+  async addSession(session: SessionRow): Promise<void> {
+    this.sessions.set(session.id, { ...session });
+  }
+
+  async addSessionDraw(draw: SessionDrawRow): Promise<void> {
+    this.draws.push({ ...draw });
+  }
+
+  async getSessionsForPairing(pairingId: string): Promise<SessionRow[]> {
+    return [...this.sessions.values()].filter((s) => s.pairingId === pairingId).map((s) => ({ ...s }));
+  }
+
+  async getDrawsForSession(sessionId: string): Promise<SessionDrawRow[]> {
+    return this.draws.filter((d) => d.sessionId === sessionId).map((d) => ({ ...d }));
+  }
+
+  async unpairUser(userId: string): Promise<UnpairResult> {
+    // Single synchronous critical section = one transaction (invariant #7).
+    let target: Pairing | null = null;
+    for (const p of this.pairings.values()) {
+      if (p.status !== 'ended' && (p.userA === userId || p.userB === userId)) {
+        target = p;
+        break;
+      }
+    }
+    if (!target) return { pairingId: null, deletedSessionIds: [] };
+
+    const sessionIds = [...this.sessions.values()]
+      .filter((s) => s.pairingId === target!.id)
+      .map((s) => s.id);
+
+    // Delete draws, then sessions, then the pairing itself — all together.
+    this.draws = this.draws.filter((d) => !sessionIds.includes(d.sessionId));
+    for (const sid of sessionIds) this.sessions.delete(sid);
+    this.pairings.delete(target.id);
+
+    return { pairingId: target.id, deletedSessionIds: sessionIds };
+  }
+
   /** Test-only helper: wipe all state between test cases. */
   __reset(): void {
     this.users.clear();
@@ -122,5 +212,9 @@ export class MemoryUserStore implements UserStore {
     this.challenges.clear();
     this.magicTokens.clear();
     this.emailIndex.clear();
+    this.invites.clear();
+    this.pairings.clear();
+    this.sessions.clear();
+    this.draws = [];
   }
 }

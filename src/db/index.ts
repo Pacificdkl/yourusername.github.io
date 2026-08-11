@@ -6,13 +6,27 @@
  * here by DATABASE_URL and refuse the in-memory store in production.
  */
 import { MemoryUserStore } from './memory-store';
-import type { UserStore } from './types';
+import type { UserStore, PairingStore } from './types';
 
-export type { UserStore, User, StoredCredential, VerificationRecord } from './types';
+export type {
+  UserStore,
+  PairingStore,
+  User,
+  StoredCredential,
+  VerificationRecord,
+  Pairing,
+  PairingStatus,
+  InviteCode,
+  SessionRow,
+  SessionDrawRow,
+  UnpairResult,
+} from './types';
 
-const globalForStore = globalThis as unknown as { __spinStore?: UserStore };
+export type Store = UserStore & PairingStore;
 
-export const store: UserStore =
+const globalForStore = globalThis as unknown as { __spinStore?: Store };
+
+export const store: Store =
   globalForStore.__spinStore ?? (globalForStore.__spinStore = new MemoryUserStore());
 
 /** Test-only: reset the in-memory store. No-op for non-memory stores. */

@@ -60,6 +60,81 @@ export interface MagicToken {
   consumedAt: Date | null;
 }
 
+export type PairingStatus = 'pending' | 'active' | 'ended';
+
+/** One pairing between two users. At most one non-ended per user (CLAUDE.md §5). */
+export interface Pairing {
+  id: string;
+  /** The invite issuer. */
+  userA: string;
+  /** The redeemer. */
+  userB: string;
+  status: PairingStatus;
+  createdAt: Date;
+  /** Dual confirmation: both sides must confirm before the pairing goes active. */
+  confirmedA: boolean;
+  confirmedB: boolean;
+}
+
+/** A single-use invite code: 6 chars, 15 min, single use (CLAUDE.md §5). */
+export interface InviteCode {
+  code: string;
+  issuer: string;
+  expiresAt: Date;
+  consumedAt: Date | null;
+}
+
+/** A play session (Phase 5/6). Present here so unpair can cascade-delete it. */
+export interface SessionRow {
+  id: string;
+  pairingId: string;
+  intensityCap: number;
+  noRepeat: boolean;
+  startedAt: Date;
+  endedAt: Date | null;
+}
+
+/** A drawn item within a session. Deleted with its session (invariant #7). */
+export interface SessionDrawRow {
+  sessionId: string;
+  itemId: string;
+  drawnAt: Date;
+}
+
+/** Result of an atomic unpair (invariant #7). */
+export interface UnpairResult {
+  pairingId: string | null;
+  deletedSessionIds: string[];
+}
+
+export interface PairingStore {
+  // Invite codes
+  createInvite(invite: InviteCode): Promise<void>;
+  getInvite(code: string): Promise<InviteCode | null>;
+  /** Atomically marks an unexpired, unconsumed invite consumed; else null. */
+  consumeInvite(code: string, now: Date): Promise<InviteCode | null>;
+
+  // Pairings
+  createPairing(pairing: Pairing): Promise<void>;
+  getPairing(id: string): Promise<Pairing | null>;
+  /** The user's current non-ended pairing, if any (enforces one-per-user). */
+  getPairingForUser(userId: string): Promise<Pairing | null>;
+  updatePairing(pairing: Pairing): Promise<void>;
+
+  // Sessions (minimal; full lifecycle is Phase 5/6)
+  addSession(session: SessionRow): Promise<void>;
+  addSessionDraw(draw: SessionDrawRow): Promise<void>;
+  getSessionsForPairing(pairingId: string): Promise<SessionRow[]>;
+  getDrawsForSession(sessionId: string): Promise<SessionDrawRow[]>;
+
+  /**
+   * Unilateral unpair (invariant #7): in ONE transaction, delete the user's
+   * pairing and every session + session_draw belonging to it. No approval, no
+   * delay, no notification. Returns what was removed, or nulls if not paired.
+   */
+  unpairUser(userId: string): Promise<UnpairResult>;
+}
+
 export interface UserStore {
   createUser(): Promise<User>;
   findUser(id: string): Promise<User | null>;
