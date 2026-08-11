@@ -12,18 +12,26 @@ Not a native app. Not a content site. Not a recommender.
 
 ## Status
 
-This branch is a **repo scaffold + docs** foundation. It provides project
-config, the directory layout, decision records, and the invariants test
-harness. Genuinely-implemented pieces:
+**Phase 1 (auth + verification gate) is built and green.** Earlier phases of
+pure logic are also in place. Implemented:
 
-- `src/spin/` — pure, dependency-free CSPRNG + draw (invariants #3, #6).
+- `src/auth/` — passkey auth + magic-link fallback, signed sessions, and the
+  two-layer verification gate (`withVerified` per-route + edge `middleware.ts`)
+  (invariant #1).
+- `src/verify/` — `VerificationProvider` interface (stub + Persona adapter) and
+  `verifyAndPersist`, which stores only age_verified/provider_ref/verified_at
+  (invariant #2).
+- `src/db/` — `UserStore` interface + in-memory impl (pg adapter deferred; the
+  migration + RLS exist).
+- `app/api/` — auth, verify, and a gated `/api/me` data route; `pnpm build` passes.
+- `src/spin/` — pure CSPRNG + draw (invariants #3, #6).
 - `src/boundaries/` — pure pool computation (invariants #4, #5).
-- `src/verify/` — the `VerificationProvider` interface + stub (invariant #2 by type).
 - `tools/eslint-rules/no-math-random.js` — the custom lint rule (invariant #6).
 
-Everything backend-facing (auth, gate, pairing persistence, DB wiring,
-notifications) is scaffolded with typed stubs / `README`s / `it.todo` specs,
-built out phase by phase per CLAUDE.md §7.
+Invariant tests `01`–`06` and `08` are real and passing; `07` and `09` remain
+`it.todo` until their phases (pairing, notifications). Pairing, content,
+session UI, and privacy controls are still scaffolded (`README`s / stubs), built
+out phase by phase per CLAUDE.md §7. **Phase 2 has not been started.**
 
 ## Getting started
 

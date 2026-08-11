@@ -7,7 +7,7 @@ node_modules/
 dist/
 out/
 *.tsbuildinfo
-next-env.d.ts
+# next-env.d.ts is committed so `tsc --noEmit` passes in CI before a build runs.
 
 # Environment — never commit secrets or provider keys
 .env
