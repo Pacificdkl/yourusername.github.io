@@ -12,6 +12,8 @@ import type {
   BoundaryAnswer,
   BoundaryAnswerRow,
   BoundaryStore,
+  ContentItemRecord,
+  ContentStore,
   InviteCode,
   MagicToken,
   Pairing,
@@ -35,7 +37,29 @@ function newId(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export class MemoryUserStore implements UserStore, PairingStore, BoundaryStore {
+/**
+ * Mirrors the DB CHECK/NOT NULL constraints from migrations/0002_content.sql.
+ * Enforced here because the in-memory store IS the database in dev/tests, so a
+ * bad insert must fail exactly as Postgres would (§6).
+ */
+function assertContentConstraints(item: ContentItemRecord): void {
+  const nonEmpty = (s: string) => s != null && s.trim().length > 0;
+  if (!nonEmpty(item.title)) throw new Error('content constraint: title required');
+  if (!nonEmpty(item.description)) throw new Error('content constraint: description required');
+  if (!nonEmpty(item.source)) throw new Error('content constraint: source required');
+  if (!nonEmpty(item.licence)) throw new Error('content constraint: licence required');
+  if (!Number.isInteger(item.intensity) || item.intensity < 1 || item.intensity > 5) {
+    throw new Error('content constraint: intensity must be 1..5');
+  }
+  if (!Number.isInteger(item.difficulty) || item.difficulty < 1 || item.difficulty > 5) {
+    throw new Error('content constraint: difficulty must be 1..5');
+  }
+  if (item.category === 'bdsm' && !nonEmpty(item.safetyNotes)) {
+    throw new Error('content constraint: BDSM items require non-empty safety_notes');
+  }
+}
+
+export class MemoryUserStore implements UserStore, PairingStore, BoundaryStore, ContentStore {
   private users = new Map<string, User>();
   private credentials = new Map<string, { userId: string; cred: StoredCredential }>();
   private challenges = new Map<string, PendingChallenge>();
@@ -47,6 +71,7 @@ export class MemoryUserStore implements UserStore, PairingStore, BoundaryStore {
   private draws: SessionDrawRow[] = [];
   // userId -> (itemId -> answer). Nested so a user's rows are read in isolation.
   private boundaryAnswers = new Map<string, Map<string, BoundaryAnswer>>();
+  private contentItems = new Map<string, ContentItemRecord>();
 
   async createUser(): Promise<User> {
     const user: User = {
@@ -231,6 +256,36 @@ export class MemoryUserStore implements UserStore, PairingStore, BoundaryStore {
     return [...byItem.entries()].map(([itemId, answer]) => ({ itemId, answer }));
   }
 
+  // --- ContentStore ---
+
+  async addContentItem(item: ContentItemRecord): Promise<void> {
+    assertContentConstraints(item); // DB-constraint analogue: throws on violation
+    this.contentItems.set(item.id, { ...item, tags: [...item.tags] });
+  }
+
+  async getContentItem(id: string): Promise<ContentItemRecord | null> {
+    const i = this.contentItems.get(id);
+    return i ? { ...i, tags: [...i.tags] } : null;
+  }
+
+  async getAllContentItems(): Promise<ContentItemRecord[]> {
+    return [...this.contentItems.values()].map((i) => ({ ...i, tags: [...i.tags] }));
+  }
+
+  async getShippableContentItems(): Promise<ContentItemRecord[]> {
+    // Production guard (§6): unreviewed rows never returned.
+    return [...this.contentItems.values()]
+      .filter((i) => i.reviewedAt !== null && i.reviewedBy !== null)
+      .map((i) => ({ ...i, tags: [...i.tags] }));
+  }
+
+  async markContentReviewed(id: string, reviewedBy: string, reviewedAt: Date): Promise<void> {
+    const i = this.contentItems.get(id);
+    if (!i) throw new Error('markContentReviewed: unknown item');
+    i.reviewedBy = reviewedBy;
+    i.reviewedAt = reviewedAt;
+  }
+
   /** Test-only helper: wipe all state between test cases. */
   __reset(): void {
     this.users.clear();
@@ -243,5 +298,6 @@ export class MemoryUserStore implements UserStore, PairingStore, BoundaryStore {
     this.sessions.clear();
     this.draws = [];
     this.boundaryAnswers.clear();
+    this.contentItems.clear();
   }
 }

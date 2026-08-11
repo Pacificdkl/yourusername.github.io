@@ -12,8 +12,12 @@ Not a native app. Not a content site. Not a recommender.
 
 ## Status
 
-**Phases 1–3 are built and green.** Implemented:
+**Phases 1–4 are built and green.** Implemented:
 
+- `src/content/` — `content_items` schema with DB-level constraints (BDSM
+  `safety_notes` required, provenance required, bounded ranges), the review
+  workflow, the drawable pool that excludes unreviewed items (§6 guard), and a
+  fully-attributed public-domain seed set.
 - `src/boundaries/` — three-state per-user answers (own-only reads, the RLS
   analogue), the shared pool wired to the pure `computePool`, instant effect on
   edit, and the single shared read exposing item ids only (invariant #5).
@@ -34,9 +38,9 @@ Not a native app. Not a content site. Not a recommender.
 - `tools/eslint-rules/no-math-random.js` — the custom lint rule (invariant #6).
 
 Invariant tests `01`–`08` are real and passing; only `09` remains `it.todo`
-(notifications, a later phase). Content, session UI, and privacy controls are
+(notifications, a later phase). The spin session UI and privacy controls are
 still scaffolded (`README`s / stubs), built out phase by phase per CLAUDE.md §7.
-**Phase 4 has not been started.**
+**Phase 5 has not been started.**
 
 ## Getting started
 

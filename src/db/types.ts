@@ -60,6 +60,41 @@ export interface MagicToken {
   consumedAt: Date | null;
 }
 
+export type ContentCategory = 'position' | 'massage' | 'sensation' | 'bdsm' | 'roleplay';
+
+/** A content library item (CLAUDE.md §5). */
+export interface ContentItemRecord {
+  id: string;
+  title: string;
+  category: ContentCategory;
+  description: string;
+  intensity: number; // 1..5
+  difficulty: number; // 1..5
+  tags: string[];
+  /** Required non-empty for BDSM (DB constraint, §6). */
+  safetyNotes: string;
+  /** Provenance — required before an item can ship (§6). */
+  source: string;
+  licence: string;
+  /** Review workflow — an item ships only once a human sets these (§6). */
+  reviewedBy: string | null;
+  reviewedAt: Date | null;
+}
+
+export interface ContentStore {
+  /**
+   * Insert an item. Enforces the DB-constraint analogues and THROWS on
+   * violation (a failed insert, §6): source/licence/title/description non-empty,
+   * BDSM requires non-empty safety_notes, intensity/difficulty in 1..5.
+   */
+  addContentItem(item: ContentItemRecord): Promise<void>;
+  getContentItem(id: string): Promise<ContentItemRecord | null>;
+  getAllContentItems(): Promise<ContentItemRecord[]>;
+  /** Only reviewed items (reviewed_at IS NOT NULL) — the production guard (§6). */
+  getShippableContentItems(): Promise<ContentItemRecord[]>;
+  markContentReviewed(id: string, reviewedBy: string, reviewedAt: Date): Promise<void>;
+}
+
 export type BoundaryAnswer = 'yes' | 'maybe' | 'no';
 
 /** One user's answer for one item. Readable only by that user (CLAUDE.md §5). */
