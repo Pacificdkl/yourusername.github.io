@@ -200,6 +200,22 @@ export class MemoryUserStore implements UserStore, PairingStore, BoundaryStore, 
     this.sessions.set(session.id, { ...session });
   }
 
+  async getSession(id: string): Promise<SessionRow | null> {
+    const s = this.sessions.get(id);
+    return s ? { ...s } : null;
+  }
+
+  async updateSession(session: SessionRow): Promise<void> {
+    this.sessions.set(session.id, { ...session });
+  }
+
+  async getActiveSessionForPairing(pairingId: string): Promise<SessionRow | null> {
+    for (const s of this.sessions.values()) {
+      if (s.pairingId === pairingId && s.endedAt === null) return { ...s };
+    }
+    return null;
+  }
+
   async addSessionDraw(draw: SessionDrawRow): Promise<void> {
     this.draws.push({ ...draw });
   }

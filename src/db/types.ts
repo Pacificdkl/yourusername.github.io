@@ -172,8 +172,12 @@ export interface PairingStore {
   getPairingForUser(userId: string): Promise<Pairing | null>;
   updatePairing(pairing: Pairing): Promise<void>;
 
-  // Sessions (minimal; full lifecycle is Phase 5/6)
+  // Sessions
   addSession(session: SessionRow): Promise<void>;
+  getSession(id: string): Promise<SessionRow | null>;
+  updateSession(session: SessionRow): Promise<void>;
+  /** The pairing's current non-ended session, if any. */
+  getActiveSessionForPairing(pairingId: string): Promise<SessionRow | null>;
   addSessionDraw(draw: SessionDrawRow): Promise<void>;
   getSessionsForPairing(pairingId: string): Promise<SessionRow[]>;
   getDrawsForSession(sessionId: string): Promise<SessionDrawRow[]>;
