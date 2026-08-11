@@ -12,8 +12,11 @@ Not a native app. Not a content site. Not a recommender.
 
 ## Status
 
-**Phases 1–2 are built and green.** Implemented:
+**Phases 1–3 are built and green.** Implemented:
 
+- `src/boundaries/` — three-state per-user answers (own-only reads, the RLS
+  analogue), the shared pool wired to the pure `computePool`, instant effect on
+  edit, and the single shared read exposing item ids only (invariant #5).
 - `src/pairing/` — invite codes (6 chars / 15 min / single use, CSPRNG), dual
   confirmation, one active pairing per user, and unilateral unpair with
   same-transaction cascade delete of shared session history (invariant #7).
@@ -33,7 +36,7 @@ Not a native app. Not a content site. Not a recommender.
 Invariant tests `01`–`08` are real and passing; only `09` remains `it.todo`
 (notifications, a later phase). Content, session UI, and privacy controls are
 still scaffolded (`README`s / stubs), built out phase by phase per CLAUDE.md §7.
-**Phase 3 has not been started.**
+**Phase 4 has not been started.**
 
 ## Getting started
 

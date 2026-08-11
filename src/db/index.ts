@@ -6,11 +6,12 @@
  * here by DATABASE_URL and refuse the in-memory store in production.
  */
 import { MemoryUserStore } from './memory-store';
-import type { UserStore, PairingStore } from './types';
+import type { UserStore, PairingStore, BoundaryStore } from './types';
 
 export type {
   UserStore,
   PairingStore,
+  BoundaryStore,
   User,
   StoredCredential,
   VerificationRecord,
@@ -20,9 +21,11 @@ export type {
   SessionRow,
   SessionDrawRow,
   UnpairResult,
+  BoundaryAnswer,
+  BoundaryAnswerRow,
 } from './types';
 
-export type Store = UserStore & PairingStore;
+export type Store = UserStore & PairingStore & BoundaryStore;
 
 const globalForStore = globalThis as unknown as { __spinStore?: Store };
 

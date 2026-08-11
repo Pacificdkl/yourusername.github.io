@@ -60,6 +60,22 @@ export interface MagicToken {
   consumedAt: Date | null;
 }
 
+export type BoundaryAnswer = 'yes' | 'maybe' | 'no';
+
+/** One user's answer for one item. Readable only by that user (CLAUDE.md §5). */
+export interface BoundaryAnswerRow {
+  itemId: string;
+  answer: BoundaryAnswer;
+}
+
+export interface BoundaryStore {
+  /** Upsert — editing overwrites, taking effect immediately (§7.3). */
+  setBoundaryAnswer(userId: string, itemId: string, answer: BoundaryAnswer): Promise<void>;
+  getBoundaryAnswer(userId: string, itemId: string): Promise<BoundaryAnswer | null>;
+  /** Returns ONLY this user's rows (the RLS `user_id = current_user` analogue). */
+  getBoundaryAnswers(userId: string): Promise<BoundaryAnswerRow[]>;
+}
+
 export type PairingStatus = 'pending' | 'active' | 'ended';
 
 /** One pairing between two users. At most one non-ended per user (CLAUDE.md §5). */

@@ -9,6 +9,9 @@
 
 import { randomInt } from '@/spin/rng';
 import type {
+  BoundaryAnswer,
+  BoundaryAnswerRow,
+  BoundaryStore,
   InviteCode,
   MagicToken,
   Pairing,
@@ -32,7 +35,7 @@ function newId(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export class MemoryUserStore implements UserStore, PairingStore {
+export class MemoryUserStore implements UserStore, PairingStore, BoundaryStore {
   private users = new Map<string, User>();
   private credentials = new Map<string, { userId: string; cred: StoredCredential }>();
   private challenges = new Map<string, PendingChallenge>();
@@ -42,6 +45,8 @@ export class MemoryUserStore implements UserStore, PairingStore {
   private pairings = new Map<string, Pairing>();
   private sessions = new Map<string, SessionRow>();
   private draws: SessionDrawRow[] = [];
+  // userId -> (itemId -> answer). Nested so a user's rows are read in isolation.
+  private boundaryAnswers = new Map<string, Map<string, BoundaryAnswer>>();
 
   async createUser(): Promise<User> {
     const user: User = {
@@ -205,6 +210,27 @@ export class MemoryUserStore implements UserStore, PairingStore {
     return { pairingId: target.id, deletedSessionIds: sessionIds };
   }
 
+  // --- BoundaryStore ---
+
+  async setBoundaryAnswer(userId: string, itemId: string, answer: BoundaryAnswer): Promise<void> {
+    let byItem = this.boundaryAnswers.get(userId);
+    if (!byItem) {
+      byItem = new Map();
+      this.boundaryAnswers.set(userId, byItem);
+    }
+    byItem.set(itemId, answer); // upsert = instant edit (§7.3)
+  }
+
+  async getBoundaryAnswer(userId: string, itemId: string): Promise<BoundaryAnswer | null> {
+    return this.boundaryAnswers.get(userId)?.get(itemId) ?? null;
+  }
+
+  async getBoundaryAnswers(userId: string): Promise<BoundaryAnswerRow[]> {
+    const byItem = this.boundaryAnswers.get(userId);
+    if (!byItem) return [];
+    return [...byItem.entries()].map(([itemId, answer]) => ({ itemId, answer }));
+  }
+
   /** Test-only helper: wipe all state between test cases. */
   __reset(): void {
     this.users.clear();
@@ -216,5 +242,6 @@ export class MemoryUserStore implements UserStore, PairingStore {
     this.pairings.clear();
     this.sessions.clear();
     this.draws = [];
+    this.boundaryAnswers.clear();
   }
 }
