@@ -1,6 +1,8 @@
-# 0015 — PostgreSQL schema + RLS (proven), adapter binding scoped
+# 0015 — PostgreSQL schema + RLS + adapter
 
-- Status: accepted (schema + RLS); PgStore binding OPEN (scoped below)
+- Status: accepted — schema, RLS, and the full PgStore binding are implemented
+  and tested. Only the production `pg.Pool` wiring + connection-role setup
+  remain (thin, documented). Updated 2026-08-11.
 - Date: 2026-08-11
 
 ## Context
@@ -35,23 +37,35 @@ handler must not be able to read another user's `boundary_answers`.
 3. **`one_active_pairing` is enforced by partial unique indexes**, closing the
    race the application check alone couldn't (ADR 0007 open item).
 
-## OPEN — the PgStore binding (next production step, now de-risked)
+## The PgStore binding — implemented
 
-Wiring each `Store` method to SQL is remaining. It is mechanical but has two
-real subtleties that must be done correctly, so it is scoped rather than rushed:
+`src/db/pg-store.ts` implements the full `Store` (all 40 methods) over a minimal
+`Db` interface. `tests/db/pg-store.test.ts` exercises every method against
+pglite (real Postgres) — users/verification/consent/pin, passkey credentials +
+challenges, magic tokens + email index, invites/pairings/sessions/draws,
+encrypted boundary answers, content constraints + review guard, and the
+`unpairUser` / `deleteUser` cascades. Both subtleties are handled:
 
-- **Per-request RLS context under pooling.** RLS-scoped operations
-  (`boundary_answers`, `favourites`, `users`) must run on a dedicated pooled
-  client inside a transaction that does `SET LOCAL app.current_user = $1` and
-  runs as a non-`BYPASSRLS` application role. A bare `pool.query` can land on a
-  different connection and lose the GUC.
-- **Transactions for `unpairUser` / `deleteUser`.** These must be a single SQL
-  transaction; the FK `ON DELETE CASCADE` in the migrations does most of the
-  work (deleting a pairing removes its sessions + draws; deleting a user
-  cascades), but the method boundaries must still be transactional.
+- **Per-request RLS context.** RLS-scoped operations (`boundary_answers`) run
+  through `scoped(userId, …)`, a transaction that does
+  `SET LOCAL app.current_user = $1`, so the GUC can't be lost across pooled
+  connections.
+- **Transactional cascades.** `unpairUser` and `deleteUser` run in a single
+  transaction; FK `ON DELETE CASCADE` removes the dependent rows (sessions +
+  draws with a pairing; credentials/tokens/answers with a user).
+
+Field encryption at rest (ADR 0005) is applied in the adapter exactly as in the
+in-memory store, verified by asserting the raw `answer` column is ciphertext.
 
 The `boundaries/` and `spin/` logic is unaffected — the store is an interface,
 so the binding drops in behind it.
+
+### Remaining (thin): production `pg.Pool` wiring
+
+Add the `pg` dependency and the ~20-line `pgPoolToDb(pool)` adapter (sketched at
+the bottom of `pg-store.ts`), select `PgStore` by `DATABASE_URL`, and connect as
+a non-`BYPASSRLS` application role. The in-memory store must not run in
+production.
 
 ## Consequences
 

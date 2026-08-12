@@ -2,8 +2,12 @@
  * Store composition root. A single module-level singleton so request handlers
  * and tests share one instance.
  *
- * Phase 1 always uses the in-memory store. When the pg adapter lands, select it
- * here by DATABASE_URL and refuse the in-memory store in production.
+ * The in-memory store backs dev/tests. The PostgreSQL adapter (`PgStore`,
+ * src/db/pg-store.ts) is the production path; wire it to a `pg.Pool` per the
+ * sketch in that file and connect as a non-BYPASSRLS application role so the RLS
+ * policies (migrations/0004, 0005) are enforced. `DATABASE_URL` selects it in
+ * production — see `pgPoolToDb` note. Production must NOT run the in-memory
+ * store (its "at rest" is a process Map with no RLS).
  */
 import { MemoryUserStore } from './memory-store';
 import type { UserStore, PairingStore, BoundaryStore, ContentStore } from './types';
@@ -29,6 +33,8 @@ export type {
 } from './types';
 
 export type Store = UserStore & PairingStore & BoundaryStore & ContentStore;
+
+export { PgStore, type Db, type Queryable } from './pg-store';
 
 const globalForStore = globalThis as unknown as { __spinStore?: Store };
 

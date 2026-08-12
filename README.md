@@ -58,14 +58,14 @@ The §7 build order is complete (Phases 1–8). Launch-blocker progress
 (`docs/dpia.md`, `docs/security-review.md`):
 
 - **Done:** at-rest encryption of `boundary_answers` / `session_draws` (ADR
-  0005); security hardening — strict CSP + HSTS, rate limiting, CSRF same-origin
-  (ADR in security review); the DB schema (all tables migrated) with **RLS
-  proven against real Postgres** via pglite — cross-user boundary reads are
-  blocked at the database level (ADR 0015).
-- **Remaining:** the mechanical PgStore method→SQL binding (per-request
-  `SET LOCAL app.current_user` under pooling); EU/UK region pinning; ICO
-  registration + DPO sign-off; provider webhook signature verification;
-  KMS-wrapped encryption key; nonce-based CSP.
+  0005); security hardening — strict CSP + HSTS, rate limiting, CSRF same-origin;
+  the DB schema (all tables migrated) with **RLS proven against real Postgres**
+  via pglite; and the **full `PgStore` adapter** (`src/db/pg-store.ts`) — every
+  store method verified against pglite, RLS-scoped ops + transactional cascades
+  (ADR 0015).
+- **Remaining:** production `pg.Pool` wiring (~20 lines) + a non-BYPASSRLS DB
+  role; EU/UK region pinning; ICO registration + DPO sign-off; provider webhook
+  signature verification; KMS-wrapped encryption key; nonce-based CSP.
 
 ## Merge gate (CLAUDE.md §9)
 
