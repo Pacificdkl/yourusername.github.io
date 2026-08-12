@@ -12,12 +12,15 @@ Not a native app. Not a content site. Not a recommender.
 
 ## Status
 
-**Phases 1–6 are built and green.** Implemented:
+**Phases 1–7 are built and green.** Implemented:
 
+- `src/privacy/` — data export (own data only; no identity, no partner
+  answers), true delete (hard cascade + unpair), and a PBKDF2 PIN lock. Discreet
+  installable identity via `app/manifest.ts` + a neutral icon.
 - `src/ui/` — the session screen: the wheel (Framer Motion only, isolation
   tested), result card, category selector, intensity-cap slider (live session
   controls), and the always-visible safeword + one-tap stop. The wheel is
-  presentation only — the pick is server-side.
+  presentation only — the pick is server-side. Plus a `/settings` privacy panel.
 - `src/spin/` + `src/session/` — the pure CSPRNG draw (uniformity chi-square
   tested) driven by a real session: `intensityCap`, category filter, no-repeat
   as pool removal, and filter-before-draw over the drawable pool (invariant #3).
@@ -46,9 +49,9 @@ Not a native app. Not a content site. Not a recommender.
 - `tools/eslint-rules/no-math-random.js` — the custom lint rule (invariant #6).
 
 Invariant tests `01`–`08` are real and passing; only `09` remains `it.todo`
-(notifications, a later phase). Privacy controls (export, true delete, PIN lock)
-are still scaffolded (`README` / stub), built out per CLAUDE.md §7.
-**Phase 7 has not been started.**
+(no notification surface exists yet — it belongs to whatever phase adds one).
+What's left per CLAUDE.md §7 is **Phase 8** (security review + DPIA), which is a
+process/compliance phase rather than feature code.
 
 ## Getting started
 

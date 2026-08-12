@@ -197,6 +197,14 @@ export interface UserStore {
   findUser(id: string): Promise<User | null>;
   /** Persists ONLY age_verified=true, provider_ref, verified_at (invariant #2). */
   markVerified(userId: string, record: VerificationRecord): Promise<void>;
+  /** Store the PIN hash (never a raw PIN). */
+  setPinHash(userId: string, pinHash: string): Promise<void>;
+  /**
+   * TRUE delete (§7.7): hard-remove the user and ALL their data — credentials,
+   * challenges, magic tokens, email index, boundary answers — and unpair them,
+   * cascading the shared pairing's sessions + draws. Atomic.
+   */
+  deleteUser(userId: string): Promise<void>;
 
   // Passkeys
   addCredential(userId: string, cred: StoredCredential): Promise<void>;

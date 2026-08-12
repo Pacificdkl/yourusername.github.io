@@ -101,6 +101,25 @@ export class MemoryUserStore implements UserStore, PairingStore, BoundaryStore, 
     u.verifiedAt = record.verifiedAt;
   }
 
+  async setPinHash(userId: string, pinHash: string): Promise<void> {
+    const u = this.users.get(userId);
+    if (!u) throw new Error('setPinHash: unknown user');
+    u.pinHash = pinHash; // hash only, never a raw PIN
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    // Single synchronous critical section = one transaction (§7.7 true delete).
+    // Unpair first so the shared pairing + its sessions/draws cascade away.
+    await this.unpairUser(userId);
+
+    this.users.delete(userId);
+    for (const [id, e] of this.credentials) if (e.userId === userId) this.credentials.delete(id);
+    this.challenges.delete(userId);
+    for (const [hash, t] of this.magicTokens) if (t.userId === userId) this.magicTokens.delete(hash);
+    for (const [eh, uid] of this.emailIndex) if (uid === userId) this.emailIndex.delete(eh);
+    this.boundaryAnswers.delete(userId);
+  }
+
   async addCredential(userId: string, cred: StoredCredential): Promise<void> {
     this.credentials.set(cred.id, { userId, cred: { ...cred } });
   }
