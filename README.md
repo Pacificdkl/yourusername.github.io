@@ -53,6 +53,15 @@ Invariant tests `01`–`08` are real and passing; only `09` remains `it.todo`
 What's left per CLAUDE.md §7 is **Phase 8** (security review + DPIA), which is a
 process/compliance phase rather than feature code.
 
+## Merge gate (CLAUDE.md §9)
+
+The six-item pre-merge checklist is automated in `tests/review/checklist.test.ts`
+(no `Math.random()`; every gated route uses `withVerified`; no third-party
+script/font CDN; every migration is reversible and doesn't widen RLS) and pinned
+to behavioural proofs for the two judgement items (identity-in-logs → `02`,
+opacity → `05`). CI (`.github/workflows/ci.yml`) runs `lint → typecheck → test →
+build` on every push and PR. See [`docs/review-checklist.md`](./docs/review-checklist.md).
+
 ## Getting started
 
 ```bash

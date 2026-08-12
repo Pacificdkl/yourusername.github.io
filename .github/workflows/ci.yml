@@ -1,0 +1,44 @@
+name: CI
+
+# The merge gate (CLAUDE.md §9). Runs lint (incl. the custom no-math-random
+# rule), typecheck, the full test suite (invariants + the §9 checklist gate),
+# and the build. All must pass before a merge.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (eslint + no-math-random)
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test (invariants + §9 checklist)
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
