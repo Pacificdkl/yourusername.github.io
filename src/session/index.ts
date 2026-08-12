@@ -1,5 +1,6 @@
 export {
   startSession,
+  updateSessionConfig,
   spin,
   endSession,
   getActiveSessionView,

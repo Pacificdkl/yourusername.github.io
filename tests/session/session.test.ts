@@ -9,7 +9,13 @@ import { __resetStore, store } from '@/db';
 import { setAnswer } from '@/boundaries';
 import { createInvite, redeemInvite, confirmPairing } from '@/pairing';
 import { insertItem, reviewItem } from '@/content';
-import { startSession, spin, endSession, getActiveSessionView } from '@/session';
+import {
+  startSession,
+  updateSessionConfig,
+  spin,
+  endSession,
+  getActiveSessionView,
+} from '@/session';
 
 const base = {
   category: 'position' as const,
@@ -158,6 +164,54 @@ describe('no-repeat as pool removal (§7.5)', () => {
     const r2 = await spin(a);
     expect(r1.ok && r1.item?.id).toBe(only);
     expect(r2.ok && r2.item?.id).toBe(only);
+  });
+});
+
+describe('category filter + live config (§7.6)', () => {
+  beforeEach(() => __resetStore());
+
+  it('only draws items in the selected categories', async () => {
+    const [a, b] = [await newUser(), await newUser()];
+    await pairActive(a, b);
+    const position = await reviewedYes(a, b, 'pos', 1); // category 'position'
+    // A massage item both consented to.
+    const massage = await insertItem({ ...base, title: 'mass', category: 'massage', intensity: 1 });
+    await reviewItem(massage.id, 'reviewer');
+    await setAnswer(a, massage.id, 'yes');
+    await setAnswer(b, massage.id, 'yes');
+
+    await startSession(a, { noRepeat: false, categories: ['position'] });
+    for (let i = 0; i < 100; i++) {
+      const res = await spin(a);
+      if (res.ok && res.item) {
+        expect(res.item.id).toBe(position);
+        expect(res.item.id).not.toBe(massage.id);
+      }
+    }
+  });
+
+  it('lowering the intensity cap mid-session takes effect on the next spin', async () => {
+    const [a, b] = [await newUser(), await newUser()];
+    await pairActive(a, b);
+    const low = await reviewedYes(a, b, 'low', 1);
+    const high = await reviewedYes(a, b, 'high', 5);
+
+    await startSession(a, { intensityCap: 5, noRepeat: false });
+    // Cap 5: both eligible.
+    const wide = new Set<string>();
+    for (let i = 0; i < 60; i++) {
+      const r = await spin(a);
+      if (r.ok && r.item) wide.add(r.item.id);
+    }
+    expect(wide.has(low) || wide.has(high)).toBe(true);
+
+    // Lower the cap live.
+    const updated = await updateSessionConfig(a, { intensityCap: 1 });
+    expect(updated.ok && updated.session.intensityCap).toBe(1);
+    for (let i = 0; i < 60; i++) {
+      const r = await spin(a);
+      if (r.ok && r.item) expect(r.item.id).toBe(low); // high now filtered out
+    }
   });
 });
 

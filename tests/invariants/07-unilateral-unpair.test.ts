@@ -60,6 +60,7 @@ describe('invariant #7: unilateral unpair', () => {
       pairingId,
       intensityCap: 3,
       noRepeat: true,
+      categories: null,
       startedAt: new Date(),
       endedAt: null,
     });

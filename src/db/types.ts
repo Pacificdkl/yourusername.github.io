@@ -141,6 +141,8 @@ export interface SessionRow {
   pairingId: string;
   intensityCap: number;
   noRepeat: boolean;
+  /** Category filter; null = all categories. */
+  categories: ContentCategory[] | null;
   startedAt: Date;
   endedAt: Date | null;
 }

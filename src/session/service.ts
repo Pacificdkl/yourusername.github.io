@@ -12,7 +12,7 @@
  */
 
 import { store } from '@/db';
-import type { ContentItemRecord, SessionRow } from '@/db';
+import type { ContentCategory, ContentItemRecord, SessionRow } from '@/db';
 import { draw } from '@/spin';
 import { getDrawablePoolForUser } from '@/content';
 import { getPairingView } from '@/pairing';
@@ -22,12 +22,15 @@ export interface SessionConfig {
   intensityCap?: number;
   /** No-repeat within the session, implemented as pool removal. Default true. */
   noRepeat?: boolean;
+  /** Category filter; omitted/null = all categories. */
+  categories?: ContentCategory[] | null;
 }
 
 export interface SessionView {
   sessionId: string;
   intensityCap: number;
   noRepeat: boolean;
+  categories: ContentCategory[] | null;
   drawCount: number;
 }
 
@@ -50,12 +53,18 @@ function newId(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+function normaliseCategories(categories: ContentCategory[] | null | undefined): ContentCategory[] | null {
+  if (!categories || categories.length === 0) return null; // null = all
+  return [...new Set(categories)];
+}
+
 async function viewOf(session: SessionRow): Promise<SessionView> {
   const draws = await store.getDrawsForSession(session.id);
   return {
     sessionId: session.id,
     intensityCap: session.intensityCap,
     noRepeat: session.noRepeat,
+    categories: session.categories,
     drawCount: draws.length,
   };
 }
@@ -79,11 +88,35 @@ export async function startSession(userId: string, config: SessionConfig = {}): 
     pairingId,
     intensityCap: clampCap(config.intensityCap),
     noRepeat: config.noRepeat ?? true,
+    categories: normaliseCategories(config.categories),
     startedAt: new Date(),
     endedAt: null,
   };
   await store.addSession(session);
   return { ok: true, session: await viewOf(session) };
+}
+
+/**
+ * Update the active session's controls (intensity-cap slider / category
+ * selector). Takes effect on the NEXT spin (instant, no session restart).
+ */
+export async function updateSessionConfig(
+  userId: string,
+  config: SessionConfig,
+): Promise<StartResult> {
+  const pairingId = await activePairingId(userId);
+  if (!pairingId) return { ok: false, reason: 'not_paired' };
+  const session = await store.getActiveSessionForPairing(pairingId);
+  if (!session) return { ok: false, reason: 'not_paired' };
+
+  const updated: SessionRow = {
+    ...session,
+    intensityCap: config.intensityCap === undefined ? session.intensityCap : clampCap(config.intensityCap),
+    noRepeat: config.noRepeat === undefined ? session.noRepeat : config.noRepeat,
+    categories: config.categories === undefined ? session.categories : normaliseCategories(config.categories),
+  };
+  await store.updateSession(updated);
+  return { ok: true, session: await viewOf(updated) };
 }
 
 /**
@@ -101,11 +134,15 @@ export async function spin(userId: string): Promise<SpinResult> {
   const drawable = await getDrawablePoolForUser(userId, 'both-yes');
   if (!drawable.ok) return { ok: false, reason: 'no_session' };
 
-  // 2. Load items and apply the intensity cap.
+  // 2. Load items and apply the intensity cap + category filter.
+  const allowedCategories = session.categories ? new Set(session.categories) : null;
   const items: ContentItemRecord[] = [];
   for (const id of drawable.pool) {
     const item = await store.getContentItem(id);
-    if (item && item.intensity <= session.intensityCap) items.push(item);
+    if (!item) continue;
+    if (item.intensity > session.intensityCap) continue;
+    if (allowedCategories && !allowedCategories.has(item.category)) continue;
+    items.push(item);
   }
 
   // 3. No-repeat as POOL REMOVAL (not post-draw rejection).

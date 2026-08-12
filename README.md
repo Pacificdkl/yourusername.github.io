@@ -12,12 +12,16 @@ Not a native app. Not a content site. Not a recommender.
 
 ## Status
 
-**Phases 1–5 are built and green.** Implemented:
+**Phases 1–6 are built and green.** Implemented:
 
+- `src/ui/` — the session screen: the wheel (Framer Motion only, isolation
+  tested), result card, category selector, intensity-cap slider (live session
+  controls), and the always-visible safeword + one-tap stop. The wheel is
+  presentation only — the pick is server-side.
 - `src/spin/` + `src/session/` — the pure CSPRNG draw (uniformity chi-square
-  tested) driven by a real session: `intensityCap`, no-repeat as pool removal,
-  and filter-before-draw over the drawable pool (invariant #3). `spin/` stays
-  pure; `session/` is the I/O layer.
+  tested) driven by a real session: `intensityCap`, category filter, no-repeat
+  as pool removal, and filter-before-draw over the drawable pool (invariant #3).
+  `spin/` stays pure; `session/` is the I/O layer.
 - `src/content/` — `content_items` schema with DB-level constraints (BDSM
   `safety_notes` required, provenance required, bounded ranges), the review
   workflow, the drawable pool that excludes unreviewed items (§6 guard), and a
@@ -42,9 +46,9 @@ Not a native app. Not a content site. Not a recommender.
 - `tools/eslint-rules/no-math-random.js` — the custom lint rule (invariant #6).
 
 Invariant tests `01`–`08` are real and passing; only `09` remains `it.todo`
-(notifications, a later phase). The UI (wheel, result card, safeword) and privacy
-controls are still scaffolded (`README`s / stubs), built out phase by phase per
-CLAUDE.md §7. **Phase 6 has not been started.**
+(notifications, a later phase). Privacy controls (export, true delete, PIN lock)
+are still scaffolded (`README` / stub), built out per CLAUDE.md §7.
+**Phase 7 has not been started.**
 
 ## Getting started
 
