@@ -1,39 +1,72 @@
 /**
- * Minimal migration runner — SCAFFOLD.
+ * Migration runner. Applies migrations/NNNN_*.sql in order against DATABASE_URL,
+ * tracking applied files in a `schema_migrations` table so it is idempotent.
  *
- * Applies migrations/NNNN_*.sql in lexical order against DATABASE_URL, tracking
- * applied files in a `schema_migrations` table. Intentionally tiny and
- * dependency-light; swap for a real tool (e.g. node-pg-migrate) if the project
- * outgrows it — record that in docs/decisions/.
+ * Only files matching /^\d{4}_.*\.sql$/ are applied; SCHEMA.reference.sql and
+ * the commented `-- DOWN` sections are ignored (DOWN lines are comments, so the
+ * whole file is safe to execute as the UP migration).
  *
- * Only *.sql files matching /^\d{4}_/ are applied. SCHEMA.reference.sql is
- * skipped by that pattern on purpose.
- *
- * TODO(phase-1): wire an actual pg client. Left unimplemented so the scaffold
- * has no runtime DB dependency yet.
+ * Run: `pnpm db:migrate` (needs DATABASE_URL).
  */
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Pool } from 'pg';
 
-const MIGRATIONS_DIR = fileURLToPath(new URL('../migrations', import.meta.url));
+const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'migrations');
 
-function pendingMigrations(): string[] {
+function migrationFiles(): string[] {
   return readdirSync(MIGRATIONS_DIR)
     .filter((f) => /^\d{4}_.*\.sql$/.test(f))
     .sort();
 }
 
-function main(): void {
-  const files = pendingMigrations();
-  if (!process.env.DATABASE_URL) {
+async function main(): Promise<void> {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
     console.error('DATABASE_URL is not set. See .env.example.');
     process.exitCode = 1;
     return;
   }
-  console.log(`Found ${files.length} migration(s):`);
-  for (const f of files) console.log(`  - ${f}`);
-  console.error('\nmigrate.ts is a scaffold stub — pg client not wired yet (see TODO).');
-  process.exitCode = 1;
+
+  const pool = new Pool({ connectionString });
+  try {
+    await pool.query(
+      `create table if not exists schema_migrations (
+         name text primary key,
+         applied_at timestamptz not null default now()
+       )`,
+    );
+    const applied = new Set(
+      (await pool.query<{ name: string }>('select name from schema_migrations')).rows.map(
+        (r) => r.name,
+      ),
+    );
+
+    for (const name of migrationFiles()) {
+      if (applied.has(name)) {
+        console.log(`= skip ${name} (already applied)`);
+        continue;
+      }
+      const sql = readFileSync(join(MIGRATIONS_DIR, name), 'utf8');
+      const client = await pool.connect();
+      try {
+        await client.query('begin');
+        await client.query(sql);
+        await client.query('insert into schema_migrations (name) values ($1)', [name]);
+        await client.query('commit');
+        console.log(`+ applied ${name}`);
+      } catch (err) {
+        await client.query('rollback');
+        throw new Error(`migration ${name} failed: ${(err as Error).message}`);
+      } finally {
+        client.release();
+      }
+    }
+    console.log('migrations up to date.');
+  } finally {
+    await pool.end();
+  }
 }
 
-main();
+void main();

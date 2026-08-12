@@ -60,12 +60,18 @@ in-memory store, verified by asserting the raw `answer` column is ciphertext.
 The `boundaries/` and `spin/` logic is unaffected — the store is an interface,
 so the binding drops in behind it.
 
-### Remaining (thin): production `pg.Pool` wiring
+### Production wiring — done
 
-Add the `pg` dependency and the ~20-line `pgPoolToDb(pool)` adapter (sketched at
-the bottom of `pg-store.ts`), select `PgStore` by `DATABASE_URL`, and connect as
-a non-`BYPASSRLS` application role. The in-memory store must not run in
-production.
+`src/db/pg-pool.ts` adapts a `pg.Pool` to `Db`: transactions acquire a dedicated
+client and run `BEGIN/COMMIT` on it, so `SET LOCAL app.current_user` stays on the
+same connection. The composition root (`src/db/index.ts`) selects `PgStore` when
+`DATABASE_URL` is set and **refuses the in-memory store at production runtime**
+(allowing it only during the Next build, which has no database). `tools/migrate.ts`
+applies the migrations against `DATABASE_URL`, tracked in `schema_migrations`.
+
+**Operational requirement:** connect as a dedicated application role WITHOUT
+`BYPASSRLS`, or the RLS policies are silently bypassed. Use a KMS-wrapped
+`DATA_ENCRYPTION_KEY` (ADR 0005).
 
 ## Consequences
 
