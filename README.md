@@ -54,11 +54,18 @@ launch blockers remain — see below). Implemented:
 Invariant tests `01`–`08` are real and passing; only `09` remains `it.todo`
 (no notification surface exists yet — it belongs to whatever phase adds one).
 
-The §7 build order is complete (Phases 1–8). **Not launch-ready**: `docs/dpia.md`
-and `docs/security-review.md` record the outstanding launch blockers — at-rest
-encryption (ADR 0005), the PostgreSQL adapter with RLS actually enforced (the
-store is in-memory), EU/UK region pinning, ICO registration + DPO sign-off, and
-security hardening (CSRF, rate limiting, CSP, provider webhook signatures).
+The §7 build order is complete (Phases 1–8). Launch-blocker progress
+(`docs/dpia.md`, `docs/security-review.md`):
+
+- **Done:** at-rest encryption of `boundary_answers` / `session_draws` (ADR
+  0005); security hardening — strict CSP + HSTS, rate limiting, CSRF same-origin
+  (ADR in security review); the DB schema (all tables migrated) with **RLS
+  proven against real Postgres** via pglite — cross-user boundary reads are
+  blocked at the database level (ADR 0015).
+- **Remaining:** the mechanical PgStore method→SQL binding (per-request
+  `SET LOCAL app.current_user` under pooling); EU/UK region pinning; ICO
+  registration + DPO sign-off; provider webhook signature verification;
+  KMS-wrapped encryption key; nonce-based CSP.
 
 ## Merge gate (CLAUDE.md §9)
 

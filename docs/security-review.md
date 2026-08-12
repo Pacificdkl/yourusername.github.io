@@ -56,7 +56,7 @@
 | Sev | Item | Status / Recommendation |
 |-----|------|----------------|
 | High | **Encryption at rest** for `boundary_answers` / `session_draws` | **DONE** — AES-256-GCM field encryption (`src/crypto/field.ts`, ADR 0005). Production still needs KMS key custody. |
-| High | **PostgreSQL adapter + RLS not wired** | The store is in-memory; production needs the pg adapter with the RLS policies actually enforced (per-request `app.current_user`), plus real transactions for unpair/delete |
+| High | **PostgreSQL adapter + RLS** | **SCHEMA + RLS PROVEN** — all tables have migrations; `tests/db/pg-schema.test.ts` proves (in real Postgres via pglite) that RLS blocks cross-user `boundary_answers` reads and the §6 constraints/guard hold (ADR 0015). **Remaining**: the mechanical PgStore method→SQL binding with per-request `SET LOCAL app.current_user` under pooling. |
 | Med | **No CSRF token** on state-changing POSTs | **DONE** — same-origin check in `middleware.ts` (`src/security/csrf.ts`) for mutating `/api` requests, on top of `SameSite=Lax`. A double-submit token can be added later. |
 | Med | **No rate limiting** on auth, magic-link, invite redeem, PIN verify | **DONE (single-instance)** — `src/security/rate-limit.ts` applied to PIN verify, invite redeem, and magic-link request. Multi-instance needs a shared store (Redis). |
 | Med | **CSP** not set | **DONE** — strict `Content-Security-Policy` (self-only, `frame-ancestors 'none'`) + HSTS in `next.config.mjs`. `'unsafe-inline'` for script/style remains until a nonce-based policy is wired. |
