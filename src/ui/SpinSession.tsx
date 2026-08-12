@@ -42,16 +42,29 @@ export function SpinSession() {
   const [result, setResult] = useState<{ item: ContentItemRecord | null; exhausted: boolean } | null>(null);
   const [spinning, setSpinning] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const [consent, setConsent] = useState<{ granted: boolean; currentVersion: string } | null>(null);
 
   const refresh = useCallback(async () => {
-    const [pairing, sess] = await Promise.all([
-      getJSON<{ pairing: unknown | null }>('/api/pairing'),
-      getJSON<{ session: SessionView | null }>('/api/session'),
-    ]);
-    setPaired(Boolean(pairing.pairing));
-    setSession(sess.session);
+    const cons = await getJSON<{ consent: { granted: boolean; currentVersion: string } }>(
+      '/api/consent',
+    );
+    setConsent(cons.consent);
+    if (cons.consent.granted) {
+      const [pairing, sess] = await Promise.all([
+        getJSON<{ pairing: unknown | null }>('/api/pairing'),
+        getJSON<{ session: SessionView | null }>('/api/session'),
+      ]);
+      setPaired(Boolean(pairing.pairing));
+      setSession(sess.session);
+    }
     setLoading(false);
   }, []);
+
+  const giveConsent = async () => {
+    if (!consent) return;
+    await postJSON('/api/consent', { granted: true, version: consent.currentVersion });
+    await refresh();
+  };
 
   useEffect(() => {
     void refresh();
@@ -92,6 +105,30 @@ export function SpinSession() {
   };
 
   if (loading) return <main className="p-6 text-sm opacity-70">Loading…</main>;
+
+  if (consent && !consent.granted) {
+    return (
+      <main className="mx-auto max-w-md space-y-4 p-6">
+        <h1 className="text-lg font-medium">Your explicit consent</h1>
+        <p className="text-sm opacity-80">
+          Spin processes information about your sexual preferences. Under UK data
+          protection law this is special-category data, so we need your{' '}
+          <strong>explicit consent</strong> to store and use it.
+        </p>
+        <p className="text-sm opacity-70">
+          This is separate from any terms of service. You can withdraw it at any
+          time in Settings, which stops this processing.
+        </p>
+        <button
+          type="button"
+          onClick={giveConsent}
+          className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-black"
+        >
+          I explicitly consent
+        </button>
+      </main>
+    );
+  }
 
   if (!paired) {
     return (

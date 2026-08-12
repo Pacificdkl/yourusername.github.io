@@ -12,12 +12,25 @@ export function PrivacyPanel() {
   const [pinSaved, setPinSaved] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleted, setDeleted] = useState(false);
+  const [consentGranted, setConsentGranted] = useState<boolean>(false);
 
   useEffect(() => {
     void fetch('/api/privacy/pin')
       .then((r) => r.json())
       .then((d: { hasPin?: boolean }) => setHasPin(Boolean(d.hasPin)));
+    void fetch('/api/consent')
+      .then((r) => r.json())
+      .then((d: { consent?: { granted?: boolean } }) => setConsentGranted(Boolean(d.consent?.granted)));
   }, []);
+
+  const withdrawConsent = async () => {
+    const res = await fetch('/api/consent', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ granted: false }),
+    });
+    if (res.ok) setConsentGranted(false);
+  };
 
   const savePin = async () => {
     const res = await fetch('/api/privacy/pin', {
@@ -90,6 +103,23 @@ export function PrivacyPanel() {
         </div>
         {pinSaved && <p className="mt-2 text-xs text-green-400">PIN saved.</p>}
       </section>
+
+      {consentGranted && (
+        <section className="rounded-2xl border border-white/15 p-5">
+          <h2 className="text-sm font-semibold">Consent</h2>
+          <p className="mt-1 text-xs opacity-70">
+            You have given explicit consent to process your preferences. You can
+            withdraw it; this stops that processing.
+          </p>
+          <button
+            type="button"
+            onClick={withdrawConsent}
+            className="mt-3 rounded-full border border-white/30 px-4 py-2 text-sm"
+          >
+            Withdraw consent
+          </button>
+        </section>
+      )}
 
       <section className="rounded-2xl border border-red-500/40 p-5">
         <h2 className="text-sm font-semibold text-red-300">Delete account</h2>

@@ -1,4 +1,5 @@
-import { json, withVerified } from '@/auth';
+import { json } from '@/auth';
+import { withConsent } from '@/consent';
 import { getDrawablePoolForUser } from '@/content';
 import type { PoolMode } from '@/boundaries';
 
@@ -14,7 +15,7 @@ function parseMode(v: string | null): PoolMode {
  * that have passed review. This is what the spin engine will draw from. Item
  * ids only (invariant #5); unreviewed items are excluded (§6 guard).
  */
-export const GET = withVerified(async (req, { user }) => {
+export const GET = withConsent(async (req, { user }) => {
   const mode = parseMode(new URL(req.url).searchParams.get('mode'));
   const result = await getDrawablePoolForUser(user.id, mode);
   if (!result.ok) return json({ error: result.reason }, 409);

@@ -36,6 +36,12 @@ export interface User {
   deviceFpHash: string | null;
   /** Hash only — never a raw PIN. */
   pinHash: string | null;
+  /**
+   * Explicit Article 9 consent (§7.8) — SEPARATE from T&Cs. The version of the
+   * consent text the user agreed to, and when. Null = not consented / withdrawn.
+   */
+  consentVersion: string | null;
+  consentGrantedAt: Date | null;
 }
 
 /** The minimal, permitted result of a verification callback (invariant #2). */
@@ -199,6 +205,10 @@ export interface UserStore {
   markVerified(userId: string, record: VerificationRecord): Promise<void>;
   /** Store the PIN hash (never a raw PIN). */
   setPinHash(userId: string, pinHash: string): Promise<void>;
+  /** Record explicit Article 9 consent (§7.8). */
+  setConsent(userId: string, version: string, grantedAt: Date): Promise<void>;
+  /** Withdraw consent — clears the recorded consent. */
+  withdrawConsent(userId: string): Promise<void>;
   /**
    * TRUE delete (§7.7): hard-remove the user and ALL their data — credentials,
    * challenges, magic tokens, email index, boundary answers — and unpair them,

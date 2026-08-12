@@ -1,4 +1,5 @@
-import { json, withVerified } from '@/auth';
+import { json } from '@/auth';
+import { withConsent } from '@/consent';
 import { getPoolForUser } from '@/boundaries';
 import type { PoolMode } from '@/boundaries';
 
@@ -14,7 +15,7 @@ function parseMode(v: string | null): PoolMode {
  * pairing, as item ids ONLY (invariant #5). No pairing → 409 not_paired, which
  * discloses no boundary data. This is the single shared read.
  */
-export const GET = withVerified(async (req, { user }) => {
+export const GET = withConsent(async (req, { user }) => {
   const mode = parseMode(new URL(req.url).searchParams.get('mode'));
   const result = await getPoolForUser(user.id, mode);
   if (!result.ok) return json({ error: result.reason }, 409);

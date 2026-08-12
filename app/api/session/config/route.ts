@@ -1,4 +1,5 @@
-import { json, withVerified } from '@/auth';
+import { json } from '@/auth';
+import { withConsent } from '@/consent';
 import { updateSessionConfig } from '@/session';
 import { isCategory } from '@/content';
 import type { ContentCategory } from '@/content';
@@ -10,7 +11,7 @@ export const runtime = 'nodejs';
  * the active session's controls (intensity slider / category selector). Takes
  * effect on the next spin.
  */
-export const POST = withVerified(async (req, { user }) => {
+export const POST = withConsent(async (req, { user }) => {
   const body = (await req.json().catch(() => ({}))) as {
     intensityCap?: number;
     noRepeat?: boolean;

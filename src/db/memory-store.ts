@@ -82,6 +82,8 @@ export class MemoryUserStore implements UserStore, PairingStore, BoundaryStore, 
       verifiedAt: null,
       deviceFpHash: null,
       pinHash: null,
+      consentVersion: null,
+      consentGrantedAt: null,
     };
     this.users.set(user.id, user);
     return { ...user };
@@ -105,6 +107,20 @@ export class MemoryUserStore implements UserStore, PairingStore, BoundaryStore, 
     const u = this.users.get(userId);
     if (!u) throw new Error('setPinHash: unknown user');
     u.pinHash = pinHash; // hash only, never a raw PIN
+  }
+
+  async setConsent(userId: string, version: string, grantedAt: Date): Promise<void> {
+    const u = this.users.get(userId);
+    if (!u) throw new Error('setConsent: unknown user');
+    u.consentVersion = version;
+    u.consentGrantedAt = grantedAt;
+  }
+
+  async withdrawConsent(userId: string): Promise<void> {
+    const u = this.users.get(userId);
+    if (!u) throw new Error('withdrawConsent: unknown user');
+    u.consentVersion = null;
+    u.consentGrantedAt = null;
   }
 
   async deleteUser(userId: string): Promise<void> {

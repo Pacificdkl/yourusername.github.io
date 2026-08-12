@@ -1,4 +1,5 @@
-import { json, withVerified } from '@/auth';
+import { json } from '@/auth';
+import { withConsent } from '@/consent';
 import { setAnswer, getMyAnswers } from '@/boundaries';
 import type { Answer } from '@/boundaries';
 
@@ -13,7 +14,7 @@ function isAnswer(v: unknown): v is Answer {
  * GET /api/boundaries — the caller's OWN answers only (invariant #5). There is
  * no endpoint that returns a partner's answers.
  */
-export const GET = withVerified(async (_req, { user }) => {
+export const GET = withConsent(async (_req, { user }) => {
   return json({ answers: await getMyAnswers(user.id) });
 });
 
@@ -21,7 +22,7 @@ export const GET = withVerified(async (_req, { user }) => {
  * PUT /api/boundaries  { itemId, answer } — set/edit the caller's own answer.
  * Takes effect immediately (§7.3).
  */
-export const PUT = withVerified(async (req, { user }) => {
+export const PUT = withConsent(async (req, { user }) => {
   const { itemId, answer } = (await req.json().catch(() => ({}))) as {
     itemId?: string;
     answer?: unknown;

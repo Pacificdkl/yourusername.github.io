@@ -13,12 +13,14 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { __resetStore, store } from '@/db';
 import { signSession, SESSION_COOKIE_NAME } from '@/auth';
 import { createInvite, redeemInvite, confirmPairing } from '@/pairing';
+import { grantConsent } from '@/consent';
 import { GET as getBoundaries, PUT as putBoundary } from '../../app/api/boundaries/route';
 import { GET as getPool } from '../../app/api/boundaries/pool/route';
 
 async function verifiedUser(): Promise<string> {
   const u = await store.createUser();
   await store.markVerified(u.id, { providerRef: 'r', verifiedAt: new Date() });
+  await grantConsent(u.id); // Article 9 consent — boundaries routes require it (§7.8)
   return u.id;
 }
 

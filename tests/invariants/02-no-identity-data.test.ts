@@ -24,6 +24,9 @@ const ALLOWED_USER_KEYS = [
   'verifiedAt',
   'deviceFpHash',
   'pinHash',
+  // Consent metadata (§7.8): a version string + timestamp — not identity data.
+  'consentVersion',
+  'consentGrantedAt',
 ].sort();
 
 // Values a hostile/naive provider payload might try to smuggle in.

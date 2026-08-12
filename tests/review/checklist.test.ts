@@ -57,9 +57,10 @@ describe('§9 [3] every gated API route checks verification server-side', () => 
     const gated = !UNGATED.some((p) => routePath === p.replace(/\/$/, '') || routePath.startsWith(p));
     if (!gated) continue;
 
-    it(`${routePath} uses withVerified`, () => {
+    it(`${routePath} checks verification server-side (withVerified or withConsent)`, () => {
       const src = readFileSync(file, 'utf8');
-      expect(src).toMatch(/withVerified\s*\(/);
+      // withConsent composes getVerifiedUser, so it enforces verification too.
+      expect(src).toMatch(/with(Verified|Consent)\s*\(/);
     });
   }
 });

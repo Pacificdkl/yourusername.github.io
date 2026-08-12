@@ -37,6 +37,8 @@ let calls: string[] = [];
 
 function installFetch(overrides: Record<string, unknown> = {}) {
   const routes: Record<string, unknown> = {
+    'GET /api/consent': { consent: { granted: true, currentVersion: 'v1', version: 'v1' } },
+    'POST /api/consent': { consent: { granted: true, currentVersion: 'v1', version: 'v1' } },
     'GET /api/pairing': { pairing: { pairingId: 'p1', partnerId: 'u2', status: 'active' } },
     'GET /api/session': { session: activeSession },
     'POST /api/session/spin': { item: drawnItem },
@@ -94,5 +96,15 @@ describe('SpinSession', () => {
     installFetch({ 'GET /api/pairing': { pairing: null } });
     render(<SpinSession />);
     expect(await screen.findByText(/pair with your partner first/i)).toBeInTheDocument();
+  });
+
+  it('shows the explicit consent screen before anything else when not consented', async () => {
+    installFetch({
+      'GET /api/consent': { consent: { granted: false, currentVersion: 'v1' } },
+    });
+    render(<SpinSession />);
+    expect(await screen.findByRole('button', { name: /i explicitly consent/i })).toBeInTheDocument();
+    // Not pairing/session yet — consent gates the rest.
+    expect(screen.queryByText('RED')).not.toBeInTheDocument();
   });
 });

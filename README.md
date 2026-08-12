@@ -12,8 +12,11 @@ Not a native app. Not a content site. Not a recommender.
 
 ## Status
 
-**Phases 1–7 are built and green.** Implemented:
+**Phases 1–8 are built and green** (Phase 8 is compliance + the consent gate;
+launch blockers remain — see below). Implemented:
 
+- `src/consent/` — explicit Article 9 opt-in, **separate from T&Cs**, versioned
+  and withdrawable; `withConsent` gates the special-category routes (§7.8).
 - `src/privacy/` — data export (own data only; no identity, no partner
   answers), true delete (hard cascade + unpair), and a PBKDF2 PIN lock. Discreet
   installable identity via `app/manifest.ts` + a neutral icon.
@@ -50,8 +53,12 @@ Not a native app. Not a content site. Not a recommender.
 
 Invariant tests `01`–`08` are real and passing; only `09` remains `it.todo`
 (no notification surface exists yet — it belongs to whatever phase adds one).
-What's left per CLAUDE.md §7 is **Phase 8** (security review + DPIA), which is a
-process/compliance phase rather than feature code.
+
+The §7 build order is complete (Phases 1–8). **Not launch-ready**: `docs/dpia.md`
+and `docs/security-review.md` record the outstanding launch blockers — at-rest
+encryption (ADR 0005), the PostgreSQL adapter with RLS actually enforced (the
+store is in-memory), EU/UK region pinning, ICO registration + DPO sign-off, and
+security hardening (CSRF, rate limiting, CSP, provider webhook signatures).
 
 ## Merge gate (CLAUDE.md §9)
 
