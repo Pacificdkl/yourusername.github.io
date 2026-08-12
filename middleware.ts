@@ -9,6 +9,7 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { verifySession, SESSION_COOKIE_NAME } from '@/auth/session';
+import { originAllowed } from '@/security/csrf';
 
 const UNGATED_PREFIXES = ['/api/auth/', '/api/verify/', '/verify', '/login'];
 
@@ -18,6 +19,24 @@ function isUngated(pathname: string): boolean {
 
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
+
+  // CSRF: mutating /api requests must be same-origin. Runs first so even the
+  // ungated auth-flow mutations are protected.
+  if (pathname.startsWith('/api/')) {
+    const csrfOk = originAllowed(
+      req.method,
+      req.headers.get('origin'),
+      req.headers.get('referer'),
+      req.nextUrl.host,
+    );
+    if (!csrfOk) {
+      return new NextResponse(JSON.stringify({ error: 'csrf_check_failed' }), {
+        status: 403,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+  }
+
   if (isUngated(pathname)) return NextResponse.next();
 
   const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;

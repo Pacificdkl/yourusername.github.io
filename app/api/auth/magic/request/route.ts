@@ -1,5 +1,6 @@
 import { json } from '@/auth';
 import { issueMagicLink } from '@/auth';
+import { enforceRateLimit, clientKey } from '@/security/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -10,6 +11,10 @@ export const runtime = 'nodejs';
  * link is returned directly; in production it is emailed and never logged.
  */
 export async function POST(req: Request): Promise<Response> {
+  // Throttle by client IP to resist enumeration / mail-bombing.
+  const limited = enforceRateLimit(`magic:${clientKey(req)}`, 5, 15 * 60 * 1000);
+  if (limited) return limited;
+
   const { email } = (await req.json().catch(() => ({}))) as { email?: string };
   if (!email || !email.includes('@')) {
     return json({ error: 'invalid_email' }, 400);

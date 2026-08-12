@@ -53,16 +53,16 @@
 
 ## 4. Weaknesses / recommendations
 
-| Sev | Item | Recommendation |
+| Sev | Item | Status / Recommendation |
 |-----|------|----------------|
-| High | **Encryption at rest** for `boundary_answers` / `session_draws` not implemented (ADR 0005) | Decide client-side vs server-side encryption and implement before launch (DPIA R8) |
+| High | **Encryption at rest** for `boundary_answers` / `session_draws` | **DONE** — AES-256-GCM field encryption (`src/crypto/field.ts`, ADR 0005). Production still needs KMS key custody. |
 | High | **PostgreSQL adapter + RLS not wired** | The store is in-memory; production needs the pg adapter with the RLS policies actually enforced (per-request `app.current_user`), plus real transactions for unpair/delete |
-| Med | **No CSRF token** on state-changing POSTs | `SameSite=Lax` mitigates cross-site form posts; add a CSRF token or origin check before launch, especially for `POST` mutations |
-| Med | **No rate limiting** on auth, magic-link, invite redeem, PIN verify | Add throttling/lockout to resist brute force (invite codes, PIN, magic tokens) |
+| Med | **No CSRF token** on state-changing POSTs | **DONE** — same-origin check in `middleware.ts` (`src/security/csrf.ts`) for mutating `/api` requests, on top of `SameSite=Lax`. A double-submit token can be added later. |
+| Med | **No rate limiting** on auth, magic-link, invite redeem, PIN verify | **DONE (single-instance)** — `src/security/rate-limit.ts` applied to PIN verify, invite redeem, and magic-link request. Multi-instance needs a shared store (Redis). |
+| Med | **CSP** not set | **DONE** — strict `Content-Security-Policy` (self-only, `frame-ancestors 'none'`) + HSTS in `next.config.mjs`. `'unsafe-inline'` for script/style remains until a nonce-based policy is wired. |
 | Med | **Provider webhook signature** verification is a TODO in `PersonaVerificationProvider` | Implement HMAC verification before enabling a real provider |
-| Med | **CSP** not set | Add a strict Content-Security-Policy (no external origins — consistent with #8) |
 | Low | **Region** not pinned | Pin EU/UK app + DB region and verify (DPIA R10) |
-| Low | **Security headers** could add HSTS at the edge/host | Enable HSTS in production |
+| Low | **Nonce-based CSP** | Replace `'unsafe-inline'` with per-request nonces for scripts |
 
 ## 5. §9 merge checklist
 
