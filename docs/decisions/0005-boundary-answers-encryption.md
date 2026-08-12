@@ -1,6 +1,7 @@
 # 0005 — Encryption of boundary_answers and session_draws
 
-- Status: OPEN (decision required before Phase 3 ships)
+- Status: **accepted** — server-side encryption at rest (option 2); client-side
+  E2E deferred with a documented reason. Updated 2026-08-11 (was OPEN).
 - Date: 2026-08-11
 
 ## Context
@@ -22,13 +23,43 @@ category data (sexual life), so the bar is high (CLAUDE.md §7.8).
 
 ## Decision
 
-**Not yet made.** Placeholder recorded now so the requirement is not lost. Phase
-3 must resolve it. If option 2 is chosen, the justification goes here, along
-with the mitigations (RLS forbidding partner/service-role reads, key custody,
-audit).
+**Option 2 — server-side encryption at rest**, implemented as AES-256-GCM
+field encryption (`src/crypto/field.ts`) applied at the store boundary to
+`boundary_answers.answer` and `session_draws.item_id`. Values are ciphertext at
+rest and decrypted only when the application reads them.
+
+### Why server-side (not client-side E2E) for now
+
+- The core feature is **pool intersection across two partners' answers**. Doing
+  that over end-to-end-encrypted data requires either a shared pairing key
+  negotiated between two devices or searchable/deterministic encryption, plus
+  key backup/recovery when a device is lost. That is a substantial build and a
+  usability/recovery risk.
+- Server-side encryption still materially raises the bar: a stolen database
+  backup or a leaked disk yields ciphertext, not preferences. Combined with RLS
+  (partner/service-role cannot read another user's rows) it covers the primary
+  threats (backup theft, misused service role reading columns) short of a live
+  application-memory compromise.
+
+### Mitigations / production requirements
+
+- Key custody: `DATA_ENCRYPTION_KEY` must be a KMS-wrapped 32-byte key in
+  production (envelope encryption), not a plain env var; rotate on leak.
+- RLS forbids partner/service-role reads of `boundary_answers` (enforced by the
+  pg adapter, ADR 0015).
+- Residual: the running app can read plaintext (needed to compute the pool). A
+  future move to client-side E2E remains open and is recorded as a stretch goal.
+
+### Residual metadata
+
+Key columns (`user_id`, `item_id`) stay plaintext so answers can be matched
+between partners and indexed. That leaks *which* items a user has answered (not
+the answer) to a DB-read attacker; this is mitigated by RLS and accepted for
+now. Fully hiding it needs deterministic/searchable encryption — deferred.
 
 ## Consequences
 
-Blocks Phase 3 sign-off until closed. The `boundaries/` pure logic is written to
-be agnostic: `computePool` takes decrypted answers and returns ids only, so
-either option can wrap it.
+Closed. `src/crypto/field.ts` + tests (`tests/crypto/field.test.ts`) implement
+and prove the at-rest encryption; the `boundaries/` pure logic is unchanged
+(`computePool` still takes decrypted answers). Production still needs KMS key
+custody.

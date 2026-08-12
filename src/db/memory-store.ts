@@ -8,6 +8,7 @@
  */
 
 import { randomInt } from '@/spin/rng';
+import { encryptField, decryptField } from '@/crypto/field';
 import type {
   BoundaryAnswer,
   BoundaryAnswerRow,
@@ -69,8 +70,9 @@ export class MemoryUserStore implements UserStore, PairingStore, BoundaryStore, 
   private pairings = new Map<string, Pairing>();
   private sessions = new Map<string, SessionRow>();
   private draws: SessionDrawRow[] = [];
-  // userId -> (itemId -> answer). Nested so a user's rows are read in isolation.
-  private boundaryAnswers = new Map<string, Map<string, BoundaryAnswer>>();
+  // userId -> (itemId -> ENCRYPTED answer). Nested so a user's rows are read in
+  // isolation; values are ciphertext at rest (§5), decrypted on read.
+  private boundaryAnswers = new Map<string, Map<string, string>>();
   private contentItems = new Map<string, ContentItemRecord>();
 
   async createUser(): Promise<User> {
@@ -252,7 +254,8 @@ export class MemoryUserStore implements UserStore, PairingStore, BoundaryStore, 
   }
 
   async addSessionDraw(draw: SessionDrawRow): Promise<void> {
-    this.draws.push({ ...draw });
+    // Encrypt the item id at rest (§5) — it reveals what was suggested.
+    this.draws.push({ ...draw, itemId: await encryptField(draw.itemId) });
   }
 
   async getSessionsForPairing(pairingId: string): Promise<SessionRow[]> {
@@ -260,7 +263,11 @@ export class MemoryUserStore implements UserStore, PairingStore, BoundaryStore, 
   }
 
   async getDrawsForSession(sessionId: string): Promise<SessionDrawRow[]> {
-    return this.draws.filter((d) => d.sessionId === sessionId).map((d) => ({ ...d }));
+    return Promise.all(
+      this.draws
+        .filter((d) => d.sessionId === sessionId)
+        .map(async (d) => ({ ...d, itemId: await decryptField(d.itemId) })),
+    );
   }
 
   async unpairUser(userId: string): Promise<UnpairResult> {
@@ -294,17 +301,28 @@ export class MemoryUserStore implements UserStore, PairingStore, BoundaryStore, 
       byItem = new Map();
       this.boundaryAnswers.set(userId, byItem);
     }
-    byItem.set(itemId, answer); // upsert = instant edit (§7.3)
+    byItem.set(itemId, await encryptField(answer)); // encrypted at rest (§5); upsert (§7.3)
   }
 
   async getBoundaryAnswer(userId: string, itemId: string): Promise<BoundaryAnswer | null> {
-    return this.boundaryAnswers.get(userId)?.get(itemId) ?? null;
+    const enc = this.boundaryAnswers.get(userId)?.get(itemId);
+    return enc == null ? null : ((await decryptField(enc)) as BoundaryAnswer);
   }
 
   async getBoundaryAnswers(userId: string): Promise<BoundaryAnswerRow[]> {
     const byItem = this.boundaryAnswers.get(userId);
     if (!byItem) return [];
-    return [...byItem.entries()].map(([itemId, answer]) => ({ itemId, answer }));
+    return Promise.all(
+      [...byItem.entries()].map(async ([itemId, enc]) => ({
+        itemId,
+        answer: (await decryptField(enc)) as BoundaryAnswer,
+      })),
+    );
+  }
+
+  /** Test-only: the raw at-rest representation, to prove it is ciphertext. */
+  __rawBoundaryAnswer(userId: string, itemId: string): string | undefined {
+    return this.boundaryAnswers.get(userId)?.get(itemId);
   }
 
   // --- ContentStore ---
