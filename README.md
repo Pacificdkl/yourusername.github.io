@@ -51,8 +51,9 @@ launch blockers remain — see below). Implemented:
 - `src/boundaries/` — pure pool computation (invariants #4, #5).
 - `tools/eslint-rules/no-math-random.js` — the custom lint rule (invariant #6).
 
-Invariant tests `01`–`08` are real and passing; only `09` remains `it.todo`
-(no notification surface exists yet — it belongs to whatever phase adds one).
+Invariant tests `01`–`09` are all real and passing (**200 passing, 0 todo**).
+`src/notifications` provides a contentless notification builder that makes #9
+structurally enforceable.
 
 The §7 build order is complete (Phases 1–8). Launch-blocker progress
 (`docs/dpia.md`, `docs/security-review.md`):

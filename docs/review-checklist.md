@@ -24,10 +24,10 @@ build` on every push and PR.
   partners, confirm the response type is ids-only (or the caller's own answers),
   and that error messages don't disclose which side excluded an item.
 
-## What is NOT yet covered
+## Status of the invariant suite
 
-- `09-no-content-in-notifications` remains `it.todo`: there is no notification
-  surface in the app yet. When one is added, that invariant becomes real and
-  joins this gate.
-- At-rest encryption of `boundary_answers` / `session_draws` (ADR 0005) is still
-  open and is a launch blocker tracked separately, not a per-merge item.
+All nine non-negotiables now have real, passing tests (`01`–`09`); at-rest
+encryption (ADR 0005) and the pg adapter + RLS (ADR 0015) are implemented and
+tested. Remaining work is operational (region pinning, ICO/DPO sign-off,
+provider webhook signatures, KMS key, production pg role) — tracked in
+`docs/dpia.md` and `docs/security-review.md`, not per-merge items.
