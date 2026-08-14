@@ -25,7 +25,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Node 22: jsdom@30 pulls undici@8, which needs Node >= 22
+          # (Node 20 fails with "webidl.util.markAsUncloneable is not a function").
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
