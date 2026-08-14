@@ -12,18 +12,70 @@ Not a native app. Not a content site. Not a recommender.
 
 ## Status
 
-This branch is a **repo scaffold + docs** foundation. It provides project
-config, the directory layout, decision records, and the invariants test
-harness. Genuinely-implemented pieces:
+**Phases 1–8 are built and green** (Phase 8 is compliance + the consent gate;
+launch blockers remain — see below). Implemented:
 
-- `src/spin/` — pure, dependency-free CSPRNG + draw (invariants #3, #6).
+- `src/consent/` — explicit Article 9 opt-in, **separate from T&Cs**, versioned
+  and withdrawable; `withConsent` gates the special-category routes (§7.8).
+- `src/privacy/` — data export (own data only; no identity, no partner
+  answers), true delete (hard cascade + unpair), and a PBKDF2 PIN lock. Discreet
+  installable identity via `app/manifest.ts` + a neutral icon.
+- `src/ui/` — the session screen: the wheel (Framer Motion only, isolation
+  tested), result card, category selector, intensity-cap slider (live session
+  controls), and the always-visible safeword + one-tap stop. The wheel is
+  presentation only — the pick is server-side. Plus a `/settings` privacy panel.
+- `src/spin/` + `src/session/` — the pure CSPRNG draw (uniformity chi-square
+  tested) driven by a real session: `intensityCap`, category filter, no-repeat
+  as pool removal, and filter-before-draw over the drawable pool (invariant #3).
+  `spin/` stays pure; `session/` is the I/O layer.
+- `src/content/` — `content_items` schema with DB-level constraints (BDSM
+  `safety_notes` required, provenance required, bounded ranges), the review
+  workflow, the drawable pool that excludes unreviewed items (§6 guard), and a
+  fully-attributed public-domain seed set.
+- `src/boundaries/` — three-state per-user answers (own-only reads, the RLS
+  analogue), the shared pool wired to the pure `computePool`, instant effect on
+  edit, and the single shared read exposing item ids only (invariant #5).
+- `src/pairing/` — invite codes (6 chars / 15 min / single use, CSPRNG), dual
+  confirmation, one active pairing per user, and unilateral unpair with
+  same-transaction cascade delete of shared session history (invariant #7).
+- `src/auth/` — passkey auth + magic-link fallback, signed sessions, and the
+  two-layer verification gate (`withVerified` per-route + edge `middleware.ts`)
+  (invariant #1).
+- `src/verify/` — `VerificationProvider` interface (stub + Persona adapter) and
+  `verifyAndPersist`, which stores only age_verified/provider_ref/verified_at
+  (invariant #2).
+- `src/db/` — `UserStore` interface + in-memory impl (pg adapter deferred; the
+  migration + RLS exist).
+- `app/api/` — auth, verify, and a gated `/api/me` data route; `pnpm build` passes.
+- `src/spin/` — pure CSPRNG + draw (invariants #3, #6).
 - `src/boundaries/` — pure pool computation (invariants #4, #5).
-- `src/verify/` — the `VerificationProvider` interface + stub (invariant #2 by type).
 - `tools/eslint-rules/no-math-random.js` — the custom lint rule (invariant #6).
 
-Everything backend-facing (auth, gate, pairing persistence, DB wiring,
-notifications) is scaffolded with typed stubs / `README`s / `it.todo` specs,
-built out phase by phase per CLAUDE.md §7.
+Invariant tests `01`–`09` are all real and passing (**200 passing, 0 todo**).
+`src/notifications` provides a contentless notification builder that makes #9
+structurally enforceable.
+
+The §7 build order is complete (Phases 1–8). Launch-blocker progress
+(`docs/dpia.md`, `docs/security-review.md`):
+
+- **Done:** at-rest encryption of `boundary_answers` / `session_draws` (ADR
+  0005); security hardening — strict CSP + HSTS, rate limiting, CSRF same-origin;
+  the DB schema (all tables migrated) with **RLS proven against real Postgres**
+  via pglite; and the **full `PgStore` adapter** (`src/db/pg-store.ts`) — every
+  store method verified against pglite, RLS-scoped ops + transactional cascades
+  (ADR 0015).
+- **Remaining:** production `pg.Pool` wiring (~20 lines) + a non-BYPASSRLS DB
+  role; EU/UK region pinning; ICO registration + DPO sign-off; provider webhook
+  signature verification; KMS-wrapped encryption key; nonce-based CSP.
+
+## Merge gate (CLAUDE.md §9)
+
+The six-item pre-merge checklist is automated in `tests/review/checklist.test.ts`
+(no `Math.random()`; every gated route uses `withVerified`; no third-party
+script/font CDN; every migration is reversible and doesn't widen RLS) and pinned
+to behavioural proofs for the two judgement items (identity-in-logs → `02`,
+opacity → `05`). CI (`.github/workflows/ci.yml`) runs `lint → typecheck → test →
+build` on every push and PR. See [`docs/review-checklist.md`](./docs/review-checklist.md).
 
 ## Getting started
 

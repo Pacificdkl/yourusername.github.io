@@ -6,7 +6,7 @@
 -- biometric column exists — the schema is part of the enforcement.
 
 -- UP
-create extension if not exists "pgcrypto";
+-- gen_random_uuid() is a core function in PostgreSQL 13+ (no pgcrypto needed).
 
 create table if not exists users (
   id            uuid primary key default gen_random_uuid(),
@@ -15,7 +15,10 @@ create table if not exists users (
   provider_ref  text,                       -- opaque handle at the assurance provider
   verified_at   timestamptz,
   device_fp_hash text,                       -- hash only, never a raw fingerprint
-  pin_hash      text                         -- hash only, never a raw PIN
+  pin_hash      text,                        -- hash only, never a raw PIN
+  -- Explicit Article 9 consent (§7.8), separate from T&Cs. Metadata only.
+  consent_version    text,
+  consent_granted_at timestamptz
 );
 
 -- Row-level security on from the start (CLAUDE.md §3, §5). Request handlers use

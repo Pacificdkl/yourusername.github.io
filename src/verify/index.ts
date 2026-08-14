@@ -11,3 +11,4 @@ export type {
 } from './provider';
 export { StubVerificationProvider } from './stub-provider';
 export { PersonaVerificationProvider } from './persona-provider';
+export { getProvider, verifyAndPersist } from './service';
