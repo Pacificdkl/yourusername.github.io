@@ -37,7 +37,10 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  if (isUngated(pathname)) return NextResponse.next();
+  // The home page renders the client onboarding flow (sign in → verify → app)
+  // and fetches its own status from the ungated /api/auth/session. Data routes
+  // stay gated server-side, so letting the page shell through leaks nothing.
+  if (pathname === '/' || isUngated(pathname)) return NextResponse.next();
 
   const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = await verifySession(token);

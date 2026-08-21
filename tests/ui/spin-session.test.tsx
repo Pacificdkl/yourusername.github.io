@@ -95,7 +95,7 @@ describe('SpinSession', () => {
   it('prompts to pair when there is no pairing', async () => {
     installFetch({ 'GET /api/pairing': { pairing: null } });
     render(<SpinSession />);
-    expect(await screen.findByText(/pair with your partner first/i)).toBeInTheDocument();
+    expect(await screen.findByText(/pair with your partner/i)).toBeInTheDocument();
   });
 
   it('shows the explicit consent screen before anything else when not consented', async () => {
