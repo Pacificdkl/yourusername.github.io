@@ -8,6 +8,7 @@
 import { getPoolForUser } from '@/boundaries';
 import type { PoolMode } from '@/boundaries';
 import { getShippableItemIds } from './service';
+import { ensureDevSeed } from './dev-seed';
 
 export type DrawablePoolResult =
   | { ok: true; pool: string[] }
@@ -17,6 +18,7 @@ export async function getDrawablePoolForUser(
   userId: string,
   mode: PoolMode = 'both-yes',
 ): Promise<DrawablePoolResult> {
+  await ensureDevSeed(); // dev/test only: no-op in production
   const consented = await getPoolForUser(userId, mode);
   if (!consented.ok) return { ok: false, reason: consented.reason };
 

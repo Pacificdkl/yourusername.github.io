@@ -8,6 +8,8 @@ import { ResultCard } from './ResultCard';
 import { IntensitySlider } from './IntensitySlider';
 import { CategorySelector } from './CategorySelector';
 import { SafewordBar } from './SafewordBar';
+import { PairingPanel } from './PairingPanel';
+import { BoundariesPanel } from './BoundariesPanel';
 
 // Local literal so the client bundle never imports server-only content code.
 const ALL_CATEGORIES: ContentCategory[] = ['position', 'massage', 'sensation', 'bdsm', 'roleplay'];
@@ -37,7 +39,7 @@ async function postJSON<T>(url: string, body?: unknown): Promise<T> {
  */
 export function SpinSession() {
   const [loading, setLoading] = useState(true);
-  const [paired, setPaired] = useState<boolean | null>(null);
+  const [pairingStatus, setPairingStatus] = useState<'none' | 'pending' | 'active'>('none');
   const [session, setSession] = useState<SessionView | null>(null);
   const [result, setResult] = useState<{ item: ContentItemRecord | null; exhausted: boolean } | null>(null);
   const [spinning, setSpinning] = useState(false);
@@ -50,12 +52,15 @@ export function SpinSession() {
     );
     setConsent(cons.consent);
     if (cons.consent.granted) {
-      const [pairing, sess] = await Promise.all([
-        getJSON<{ pairing: unknown | null }>('/api/pairing'),
-        getJSON<{ session: SessionView | null }>('/api/session'),
-      ]);
-      setPaired(Boolean(pairing.pairing));
-      setSession(sess.session);
+      const pairing = await getJSON<{ pairing: { status: 'pending' | 'active' } | null }>(
+        '/api/pairing',
+      );
+      const status = pairing.pairing?.status ?? 'none';
+      setPairingStatus(status);
+      if (status === 'active') {
+        const sess = await getJSON<{ session: SessionView | null }>('/api/session');
+        setSession(sess.session);
+      }
     }
     setLoading(false);
   }, []);
@@ -130,25 +135,24 @@ export function SpinSession() {
     );
   }
 
-  if (!paired) {
-    return (
-      <main className="mx-auto max-w-md p-6 text-center">
-        <h1 className="text-lg font-medium">Pair with your partner first</h1>
-        <p className="mt-2 text-sm opacity-70">
-          Spin needs an active pairing before a session can start.
-        </p>
-      </main>
-    );
+  if (pairingStatus !== 'active') {
+    return <PairingPanel onActive={() => void refresh()} />;
   }
 
   if (!session) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 p-6">
-        <h1 className="text-lg font-medium">Ready to spin</h1>
+      <main className="mx-auto max-w-md space-y-6 p-6">
+        <div className="text-center">
+          <h1 className="text-lg font-medium">You&apos;re paired 🎉</h1>
+          <p className="mt-1 text-sm opacity-70">
+            Set your boundaries below, then start a session to spin.
+          </p>
+        </div>
+        <BoundariesPanel />
         <button
           type="button"
           onClick={start}
-          className="rounded-full bg-white px-8 py-3 font-semibold text-black"
+          className="w-full rounded-full bg-white px-8 py-3 font-semibold text-black"
         >
           Start session
         </button>
@@ -172,6 +176,8 @@ export function SpinSession() {
           onChange={(next) => void updateConfig({ categories: next })}
         />
       </div>
+
+      <BoundariesPanel />
 
       <SafewordBar safeword={DEFAULT_SAFEWORD} onStop={stop} stopping={stopping} />
     </main>

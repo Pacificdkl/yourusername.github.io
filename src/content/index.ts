@@ -8,3 +8,4 @@ export {
 } from './service';
 export { getDrawablePoolForUser, type DrawablePoolResult } from './drawable';
 export { SEED, seedContent } from './seed';
+export { ensureDevSeed } from './dev-seed';

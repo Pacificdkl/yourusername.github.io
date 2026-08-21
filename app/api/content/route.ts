@@ -1,6 +1,6 @@
 import { json } from '@/auth';
 import { withConsent } from '@/consent';
-import { getShippableItems } from '@/content';
+import { getShippableItems, ensureDevSeed } from '@/content';
 
 export const runtime = 'nodejs';
 
@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
  * are never returned (§6 guard). Gated: verified users only.
  */
 export const GET = withConsent(async () => {
+  await ensureDevSeed(); // dev/test only: no-op in production
   const items = await getShippableItems();
   return json({ items });
 });
